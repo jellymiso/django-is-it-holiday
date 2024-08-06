@@ -43,7 +43,7 @@ if DEBUG:
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
-
+RUN_SERVER_PORT = os.getenv("RUN_SERVER_PORT")
 # Application definition
 
 INSTALLED_APPS = [
