@@ -1,1 +1,0 @@
-# django-is-it-holiday
