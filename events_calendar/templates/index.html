@@ -1,0 +1,75 @@
+{% load static tz days_from_now selected_location %}
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,200,0,-25" />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20,100,0,-25" />
+	<link rel="stylesheet" href="{% static '/styles/index.css' %}">
+	<link rel="stylesheet" href="{% static '/scripts/vanilla-calendar/vanilla-calendar.min.css' %}">
+	<script src="{% static '/scripts/helper.js' %}"></script>
+	<script src="{% static '/scripts/index.js' %}" type="module"></script>
+	<script src="{% static '/scripts/vanilla-calendar/vanilla-calendar.min.js' %}" defer></script>
+
+</head>
+<body>
+
+	<div id="calendar-days" class="wrap">
+		<span class="holiday-bg overlay"></span>
+		<span class="holiday-bg base"></span>
+		<div id="content" class="wrap">
+			<div id="inner-box">
+					<div id="title">
+						On 
+						<span id="query">
+							<span class="material-symbols-outlined">calendar_month</span><span id="query-date">{% daysFromNow "jS F Y" days_to_add %}</span>
+							<span class="underline"></span>
+						</span>
+						<div id="calendar-widget"></div>
+					</div>
+				<p>it is</p>
+				<div id="day">Just a Normal Day&nbsp;:&#8288;(</div>
+				<p>in</p>
+				<div id="geolocation">
+					<p id="location">
+						<span class="material-symbols-outlined">location_on</span><span id="selected-location">{% selectedLocation "Singapore" %}</span>
+						<span class="underline"></span>
+					</p>
+					<div id="countries">
+						<div class="title">Countries</div>
+						<div id="country-list"></div>
+						<!-- grid goes here and javascript to insert every country based on countries.js and api -->
+						<!-- follow style of calendar js -->
+					</div>
+				</div>
+
+			</div>
+		</div>
+		<div id="controls" class="wrap">
+			<div class="control-item left">
+				<div class="button left"><span class="material-symbols-rounded">chevron_left</span>Yesterday </div>
+			</div>
+			<div class="control-item right">
+				<div class="button right">Tomorrow<span class="material-symbols-rounded">chevron_right</span></div>
+			</div>
+		</div>
+	</div>
+	<div id="loader-overlay"></div>
+	<div id="loader-content">
+		<div class="loader-wrapper">
+			<div class="loader small left" id="loading3">
+				<div class="pin"></div>
+			</div>
+			<div class="loader" id="loading3">
+				<div class="pin"></div>
+			</div>
+			<div class="loader small right" id="loading3">
+				<div class="pin"></div>
+			</div>
+			<div class="loader-base"></div>
+			<div class="loading-msg">Spinning into the near future...</div>
+		</div>
+	</div>
+</body>
+</html>
