@@ -46,7 +46,8 @@ def visage(request):
     year = request.GET.get("year")
     
     def getGoogleImageResults(holiday, country, code, year):
-      fetchURL = "https://www.googleapis.com/customsearch/v1?key=" + settings.G_CSE_APIKEY + "&cx=" + settings.G_CSE_CX + "&imgType=photo&searchType=image&siteSearch=facebook.com%20instagram.com%20linkedin.com%20yahoo.com&cr=country" + code + "&siteSearchFilter=e"  + "&q=: %22" + holiday + "%22%20" + country  + "%20" + year + " -calendar -travel -tour -package -deals -store"
+      fetchURL = "https://www.googleapis.com/customsearch/v1?key=" + settings.G_CSE_APIKEY + "&cx=" + settings.G_CSE_CX + "&imgType=photo&searchType=image&siteSearch=facebook.com%20instagram.com%20linkedin.com%20yahoo.com&cr=country" + code + "&siteSearchFilter=e"  + "&q=:%22" + holiday + "%22%20" + country  + "%20" + year + "%20-calendar%20-travel%20-tour%20-package%20-deals%20-store"
+
       try:
         response = requests.get(fetchURL)
         print(fetchURL)
