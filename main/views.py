@@ -1,12 +1,16 @@
 # from .models import Main
+import json
+import base64
+import random
+import requests 
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed, JsonResponse
 from django.template import loader
 from django.conf import settings
-import json
-import base64
-import requests
-import random
+from .services.google_image_fetcher import getGoogleImageResults
+from .services.brave_image_fetcher import getBraveImageResults
+from .services.hugging_face_image_generator import generateHuggingFaceImage
+from .services.helper import getImageAsDataURL
 
 @ensure_csrf_cookie
 def home(request):
@@ -39,79 +43,88 @@ def wormhole(request):
     return HttpResponseNotAllowed(['POST'])
 
 def visage(request):
-  if request.method =='GET':
+    api_errors = []
+
+    if request.method != 'GET':
+        return HttpResponseNotAllowed(['GET'])
+
     holiday = request.GET.get("hname")
     country = request.GET.get("cname")
     code = request.GET.get("ccode")
     year = request.GET.get("year")
-    
-    def getGoogleImageResults(holiday, country, code, year):
-      fetchURL = "https://www.googleapis.com/customsearch/v1?key=" + settings.G_CSE_APIKEY + "&cx=" + settings.G_CSE_CX + "&imgType=photo&searchType=image&siteSearch=facebook.com%20instagram.com%20linkedin.com%20yahoo.com&cr=country" + code + "&siteSearchFilter=e"  + "&q=:%22" + holiday + "%22%20" + country  + "%20" + year + "%20-calendar%20-travel%20-tour%20-package%20-deals%20-store"
 
-      try:
-        response = requests.get(fetchURL)
-        print(fetchURL)
-        response.raise_for_status()
-        if(response.content.decode("utf-8") == ""):
-          #no data 
-          return {"status": "error", "error_msg": "Unknown Error."}
+  # --- Try Google first ---
+    googleImageData = getGoogleImageResults(holiday, country, code, year)
+    if googleImageData["status"] == "success":
+        print("google search succeeded")
+        print("\n\rgoogleImageData: ") 
+        print(googleImageData)
+        result = getImageAsDataURL(googleImageData['data'], googleImageData['type'])
+        if result["status"] == "success":
+            print("google image processing succeeded")
+            return JsonResponse({
+                "status": "success",
+                "data": {"imageURL": result["data"]["data_image_string"]},
+                "remarks": ""
+            })
         else:
-          data = json.loads(response.content)
-          return {"status": "success", "data": data}
-
-
-      except requests.exceptions.RequestException as e:  
-        return {"status": "error", "error_msg": str(e)}
-
-    fetchedData = getGoogleImageResults(holiday, country, code, year)
-
-    def getImageAsDataURL(dataToProcess):
-      if (len(dataToProcess) - 1) == 0:
-        return {"status": "error", "error_msg": "No images available"}
-      randomIndex = random.randint(0, len(dataToProcess) - 1)
-      imageURL = dataToProcess[randomIndex]["link"]
-      #
-      try:
-        response = requests.get(imageURL)
-        response.raise_for_status()
-        imageData = response.content
-        print("\n\rchosen item data: " + str(dataToProcess[randomIndex]))
-        print("\n\rimageData: " + str(imageData))
-        dataImage ="data:image/jpeg;base64," + base64.b64encode(imageData).decode('utf-8')
-        print("\n\dataImage: " + str(dataImage))
-        return {"status": "success", "data": {"data_image_string": dataImage}}
-
-      except requests.exceptions.RequestException as e:  
-        #error due to permission, remove image from array
-        dataToProcess.pop(randomIndex)
-        getImageAsDataURL(dataToProcess)
-        #try again
-
-    if fetchedData["status"] == "success":
-      print("\n\rfetchedData: ")
-      print(fetchedData)
-      if "error" in fetchedData:
-        return JsonResponse({"status": "error", "error_msg": "There seems to be a problem with the Google API server, or you may be sending requests too quickly. Please try again later."})
-
-      result = getImageAsDataURL(fetchedData['data']["items"])
-      print("\n\rresult: ")
-      print(result)  
-      if result["status"] == "success":
-        return JsonResponse({"status": "success", "data": {"imageURL" : result["data"]["data_image_string"]}})
-      else:
-        return JsonResponse({"status": "error", "error_msg": result["error_msg"]})
+            print("google image processing failed")
+            api_errors.append("GoogleImageLoadError: " + result["error_msg"])
     else:
-      return JsonResponse({"status": "error", "error_msg": fetchedData["error_msg"]})
-    
-
-    
+        print("google search failed")
+        api_errors.append("GoogleImageFetchError: " + googleImageData["error_msg"])
 
 
-    
-    
+  # --- Fallback to Brave Search --- 
+    braveImageData = getBraveImageResults(holiday, country, year) 
+    if braveImageData["status"] == "success": 
+      print("\n\rbraveImageData: ") 
+      print(braveImageData)
+      print("brave search succeeded")
+      result = getImageAsDataURL(braveImageData['data'], braveImageData['type']) 
+      if result["status"] == "success": 
+        print("brave image processing succeeded")
+        return JsonResponse({ 
+          "status": "success", 
+          "data": {"imageURL" : result["data"]["data_image_string"]},
+          "remarks": "The following error(s) were encounted:", 
+          "error_chunks": api_errors 
+        }) 
+      else: 
+        print("brave image processing failed")
+        api_errors.append("BraveImageLoadError: " + result["error_msg"]) 
+    else:
+      print("brave search failed")
+      api_errors.append("BraveImageFetchError: " + braveImageData["error_msg"])
 
-  else: #GET
-    return HttpResponseNotAllowed(['GET'])
+
+  # --- Fallback to Hugging Face AI ---
+    huggingFaceData = generateHuggingFaceImage(holiday, country, year)
+    if huggingFaceData["status"] == "success":
+        print("hugging face generation succeeded")
+        result = getImageAsDataURL(huggingFaceData["data"], huggingFaceData["type"])
+        if result["status"] == "success":
+            print("hugging face image processing succeeded")
+            return JsonResponse({
+                "status": "success",
+                "data": {"imageURL": result["data"]["data_image_string"]},
+                "remarks": "The following error(s) were encountered:",
+                "error_chunks": api_errors
+            })
+        else:
+            print("hugging face image processing failed")
+            api_errors.append("HuggingFaceImageLoadError: " + result["error_msg"])
+    else:
+        print("hugging face generation failed")
+        api_errors.append("HuggingFaceFetchError: " + huggingFaceData["error_msg"])
+
+    # --- If all fail ---
+    print("All failed")
+    return JsonResponse({
+        "status": "error",
+        "error_msg": "The following error(s) were encountered:",
+        "error_chunks": api_errors
+    })
   
 
 #get country holiday of a specific year
@@ -166,7 +179,6 @@ def singularity(request):
     return JsonResponse({"status": "success", "data": holidays})
   else: #POST
     return HttpResponseNotAllowed(['GET'])
-
 
 def session_store(request, session_name, session_value):
     index = loader.get_template('index.html')
